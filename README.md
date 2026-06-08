@@ -1,4 +1,5 @@
-**Hoku is an image processing software.**
+# Hoku is an image processing software. 
+### Created by Dr. Keith T. Knox
 
 Hoku is a Java-based software package to process image data sets to recover writings that have been damaged or erased. It is distributed free-of-charge, without warranty.
 
@@ -8,7 +9,6 @@ There are no interactive image processing methods available. You cannot touch-up
 
 **Dr. Keith T. Knox**, creator of Hoku, independent imaging scientist and EMEL chief scientific advisor.
 
+### Learn more at [Wiki Hoku](https://wiki.hoku.emelibrary.org/)
 
-Learn more at Wiki Hoku: https://wiki.hoku.emelibrary.org/
-
-https://www.emelibrary.org/hoku/
+### Download [links here](https://www.emelibrary.org/hoku/) or at the [Releases](https://github.com/Early-Manuscripts-Electronic-Library/Hoku/releases) section of GitHub.
