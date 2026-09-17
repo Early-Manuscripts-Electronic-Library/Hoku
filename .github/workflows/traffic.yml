@@ -1,0 +1,20 @@
+name: Gitlytics Traffic Sync
+
+on:
+  schedule:
+    - cron: '0 17 */13 * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Sync Traffic Data
+        uses: ameyachopade/gitlytics-action@v1
+        with:
+          traffic_token: ${{ secrets.TRAFFIC_TOKEN }}
