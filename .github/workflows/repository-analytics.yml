@@ -25,23 +25,49 @@ jobs:
         run: |
           mkdir -p traffic
 
+          echo "Repository: ${REPOSITORY}"
+          echo "Checking token..."
+
+          if [ -z "${TOKEN}" ]; then
+            echo "ERROR: HokuStatisticsTK secret is empty or unavailable."
+            exit 1
+          fi
+
           echo "Fetching repository views..."
 
-          curl --fail-with-body --silent --show-error \
+          HTTP_STATUS=$(curl --silent --show-error \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "X-GitHub-Api-Version: 2026-03-10" \
-            "https://api.github.com/repos/${REPOSITORY}/traffic/views?per=day" \
-            --output /tmp/views.json
+            -o /tmp/views.json \
+            -w "%{http_code}" \
+            "https://api.github.com/repos/${REPOSITORY}/traffic/views?per=day")
+
+          echo "Views HTTP status: ${HTTP_STATUS}"
+
+          if [ "${HTTP_STATUS}" != "200" ]; then
+            echo "GitHub returned an error:"
+            cat /tmp/views.json
+            exit 1
+          fi
 
           echo "Fetching repository clones..."
 
-          curl --fail-with-body --silent --show-error \
+          HTTP_STATUS=$(curl --silent --show-error \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "X-GitHub-Api-Version: 2026-03-10" \
-            "https://api.github.com/repos/${REPOSITORY}/traffic/clones?per=day" \
-            --output /tmp/clones.json
+            -o /tmp/clones.json \
+            -w "%{http_code}" \
+            "https://api.github.com/repos/${REPOSITORY}/traffic/clones?per=day")
+
+          echo "Clones HTTP status: ${HTTP_STATUS}"
+
+          if [ "${HTTP_STATUS}" != "200" ]; then
+            echo "GitHub returned an error:"
+            cat /tmp/clones.json
+            exit 1
+          fi
 
           echo "Traffic data downloaded successfully."
 
