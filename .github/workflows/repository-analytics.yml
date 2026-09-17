@@ -1,0 +1,133 @@
+name: Repository Analytics
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "0 3 */13 * *"
+
+permissions:
+  contents: write
+
+jobs:
+  traffic:
+    name: Collect Repository Traffic
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Fetch GitHub traffic
+        env:
+          TOKEN: ${{ secrets.HokuStatisticsTK }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          mkdir -p traffic
+
+          echo "Fetching repository views..."
+
+          curl --fail-with-body --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            "https://api.github.com/repos/${REPOSITORY}/traffic/views?per=day" \
+            --output /tmp/views.json
+
+          echo "Fetching repository clones..."
+
+          curl --fail-with-body --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            "https://api.github.com/repos/${REPOSITORY}/traffic/clones?per=day" \
+            --output /tmp/clones.json
+
+          echo "Traffic data downloaded successfully."
+
+      - name: Update analytics CSV
+        run: |
+          python3 <<'PY'
+          import csv
+          import json
+          import os
+
+          OUTPUT = "traffic/github-traffic.csv"
+
+          with open("/tmp/views.json", encoding="utf-8") as f:
+              views = json.load(f)["views"]
+
+          with open("/tmp/clones.json", encoding="utf-8") as f:
+              clones = json.load(f)["clones"]
+
+          data = {}
+
+          if os.path.exists(OUTPUT):
+              with open(OUTPUT, newline="", encoding="utf-8") as f:
+                  reader = csv.DictReader(f)
+
+                  for row in reader:
+                      data[row["date"]] = row
+
+          for item in views:
+              date = item["timestamp"][:10]
+
+              if date not in data:
+                  data[date] = {
+                      "date": date,
+                      "views": "0",
+                      "unique_visitors": "0",
+                      "clones": "0",
+                      "unique_cloners": "0",
+                  }
+
+              data[date]["views"] = str(item["count"])
+              data[date]["unique_visitors"] = str(item["uniques"])
+
+          for item in clones:
+              date = item["timestamp"][:10]
+
+              if date not in data:
+                  data[date] = {
+                      "date": date,
+                      "views": "0",
+                      "unique_visitors": "0",
+                      "clones": "0",
+                      "unique_cloners": "0",
+                  }
+
+              data[date]["clones"] = str(item["count"])
+              data[date]["unique_cloners"] = str(item["uniques"])
+
+          fields = [
+              "date",
+              "views",
+              "unique_visitors",
+              "clones",
+              "unique_cloners",
+          ]
+
+          with open(OUTPUT, "w", newline="", encoding="utf-8") as f:
+              writer = csv.DictWriter(f, fieldnames=fields)
+              writer.writeheader()
+
+              for date in sorted(data):
+                  writer.writerow(data[date])
+
+          print(f"Analytics now contains {len(data)} days.")
+          PY
+
+      - name: Commit updated analytics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add traffic/github-traffic.csv
+
+          if git diff --cached --quiet; then
+            echo "No analytics changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore: update repository analytics"
+          git push
